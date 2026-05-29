@@ -28,6 +28,7 @@ class ModuleCspMiddleware
         $reverbHost = trim((string) config('broadcasting.connections.reverb.options.host', 'localhost'), '"\'');
         $reverbPort = (int) config('broadcasting.connections.reverb.options.port', 8080);
         $reverbScheme = config('broadcasting.connections.reverb.options.scheme', 'http') === 'https' ? 'wss' : 'ws';
+        $hasValidReverbHost = $reverbHost !== '' && $reverbHost !== 'localhost' && $reverbHost !== '127.0.0.1';
 
         $connectSources = array_filter(array_unique([
             "'self'",
@@ -45,7 +46,7 @@ class ModuleCspMiddleware
             "wss://localhost:{$reverbPort}",
             "ws://127.0.0.1:{$reverbPort}",
             "wss://127.0.0.1:{$reverbPort}",
-            $reverbHost !== 'localhost' && $reverbHost !== '127.0.0.1'
+            $hasValidReverbHost
                 ? "{$reverbScheme}://{$reverbHost}:{$reverbPort}"
                 : null,
             "{$reverbScheme}://localhost:{$reverbPort}",

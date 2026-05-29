@@ -1,5 +1,19 @@
 <?php
 
+$broadcastDefault = env('BROADCAST_CONNECTION', 'null');
+
+// Prevent auth/API outages when Reverb credentials are absent in local/debug runs.
+if (
+    $broadcastDefault === 'reverb'
+    && (
+        ! is_string(env('REVERB_APP_KEY')) || env('REVERB_APP_KEY') === ''
+        || ! is_string(env('REVERB_APP_SECRET')) || env('REVERB_APP_SECRET') === ''
+        || ! is_string(env('REVERB_APP_ID')) || env('REVERB_APP_ID') === ''
+    )
+) {
+    $broadcastDefault = 'log';
+}
+
 return [
 
     /*
@@ -15,7 +29,7 @@ return [
     |
     */
 
-    'default' => env('BROADCAST_CONNECTION', 'null'),
+    'default' => $broadcastDefault,
 
     /*
     |--------------------------------------------------------------------------
