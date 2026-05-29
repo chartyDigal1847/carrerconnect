@@ -69,9 +69,12 @@ return [
     ],
 
     'roles' => [
-        'allowed' => ['instructor', 'cashier', 'librarian', 'admission_officer', 'admin'],
-        'blocked' => ['student'],
+        'allowed' => ['student', 'instructor', 'cashier', 'librarian', 'admission_officer', 'career_officer', 'admin'],
+        'blocked' => [],
         'capabilities' => [
+            'student' => [
+                'opportunities.read', 'opportunities.apply',
+            ],
             'instructor' => [
                 'announcements.create', 'announcements.update', 'boards.create', 'boards.post',
                 'boards.comment', 'resources.create', 'resources.access', 'messages.send', 'discussions.participate',
@@ -87,9 +90,14 @@ return [
                 'announcements.create', 'announcements.update', 'boards.create', 'boards.post',
                 'boards.comment', 'dashboard.coordination', 'announcements.read',
             ],
+            'career_officer' => [
+                'announcements.create', 'announcements.update', 'boards.create', 'boards.post',
+                'boards.comment', 'dashboard.coordination', 'announcements.read',
+                'opportunities.read', 'opportunities.manage', 'opportunities.approve', 'opportunities.reports',
+            ],
             'admin' => [
                 'announcements.*', 'boards.*', 'resources.*', 'messages.*', 'moderation.*',
-                'analytics.*', 'activity.*',
+                'analytics.*', 'activity.*', 'opportunities.*',
             ],
         ],
     ],

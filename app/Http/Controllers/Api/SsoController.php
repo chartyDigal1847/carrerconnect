@@ -76,8 +76,8 @@ class SsoController
         } catch (\InvalidArgumentException) {
             return response()->json([
                 'success' => false,
-                'error' => 'student_blocked',
-                'message' => 'Students cannot access this module',
+                'error' => 'access_denied',
+                'message' => 'Role not permitted for CareerConnect',
             ], 403);
         }
 
@@ -95,11 +95,11 @@ class SsoController
     private function startSession(Request $request, $user, bool $embedded): JsonResponse
     {
         try {
-            $this->roles->validateUserAccess($user);
+            $this->roles->validateModuleAccess($user);
         } catch (\Illuminate\Auth\AuthenticationException $e) {
             return response()->json([
                 'success' => false,
-                'error' => 'student_blocked',
+                'error' => 'access_denied',
                 'message' => $e->getMessage(),
             ], 403);
         }

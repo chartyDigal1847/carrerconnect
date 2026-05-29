@@ -116,6 +116,16 @@ window.CareerConnect = window.CareerConnect || { state: {} };
         setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 3800);
     }
 
+    window.__CC_BOOT_HOOK__ = {
+        api, esc, emptyState, toast, submitGuard, fmtDate, state,
+        nav: null,
+        extraTabs: () => [],
+        facultyOnlyTabs: () => true,
+        defaultPage: () => 'dashboard',
+        extraPages: {},
+        afterProfileLoad: async () => {},
+    };
+
     /* ── Boot ────────────────────────────────────────────── */
     async function bootApp(portalUser) {
         state.user = portalUser;
@@ -126,14 +136,17 @@ window.CareerConnect = window.CareerConnect || { state: {} };
         root.style.cssText = 'display:block;min-height:100vh;';
         wireTabs();
         try { state.profile = await api('/auth/me'); } catch(_) {}
+        if (window.__CC_BOOT_HOOK__) await window.__CC_BOOT_HOOK__.afterProfileLoad();
+        renderNavTabs();
         initWebSockets();
         wireRealtimeEvents();
-        await navigate('dashboard');
+        const startPage = window.__CC_BOOT_HOOK__?.defaultPage?.() || 'dashboard';
+        await navigate(startPage);
         document.getElementById('careerconnect-loader')?.remove();
     }
 
     /* ── Shell ───────────────────────────────────────────── */
-    const TABS = [
+    const FACULTY_TABS = [
         { page:'dashboard',     label:'Dashboard',     icon:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>' },
         { page:'announcements', label:'Announcements', icon:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>' },
         { page:'boards',        label:'Boards',        icon:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' },
@@ -142,11 +155,30 @@ window.CareerConnect = window.CareerConnect || { state: {} };
         { page:'activity',      label:'Activity',      icon:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>' },
     ];
 
+    function visibleTabs() {
+        const hook = window.__CC_BOOT_HOOK__;
+        const isStudent = state.profile?.role === 'student';
+        const base = isStudent
+            ? []
+            : (hook?.facultyOnlyTabs?.() !== false ? FACULTY_TABS.slice() : []);
+        return base.concat(hook?.extraTabs?.() || []);
+    }
+
+    function renderNavTabs() {
+        const nav = document.querySelector('.cc-nav-tabs');
+        if (!nav) return;
+        nav.innerHTML = visibleTabs().map(t =>
+            '<button class="cc-tab" data-page="' + t.page + '" type="button" role="tab">' + t.icon + '<span>' + t.label + '</span></button>'
+        ).join('');
+        wireTabs();
+    }
+
     function buildShell() {
+        const tabs = visibleTabs();
         return '<div class="cc-shell">' +
             '<nav class="cc-nav" role="tablist">' +
             '<div class="cc-nav-tabs">' +
-            TABS.map(t => '<button class="cc-tab" data-page="' + t.page + '" type="button" role="tab">' + t.icon + '<span>' + t.label + '</span></button>').join('') +
+            tabs.map(t => '<button class="cc-tab" data-page="' + t.page + '" type="button" role="tab">' + t.icon + '<span>' + t.label + '</span></button>').join('') +
             '</div></nav>' +
             '<main class="cc-main" id="cc-main"></main></div>';
     }
@@ -162,13 +194,23 @@ window.CareerConnect = window.CareerConnect || { state: {} };
         const main = document.getElementById('cc-main');
         main.innerHTML = '<div class="cc-loading"><div class="cc-spinner"></div><span>Loading…</span></div>';
         try {
-            const pages = { dashboard: renderDashboard, announcements: renderAnnouncements, boards: renderBoards, resources: renderResources, messages: renderMessages, activity: renderActivity };
+            const pages = {
+                dashboard: renderDashboard,
+                announcements: renderAnnouncements,
+                boards: renderBoards,
+                resources: renderResources,
+                messages: renderMessages,
+                activity: renderActivity,
+                ...(window.__CC_BOOT_HOOK__?.extraPages || {}),
+            };
             if (pages[page]) await pages[page](main);
+            else main.innerHTML = '<div class="cc-page-wrap">' + emptyState('Page not found') + '</div>';
         } catch(e) {
             main.innerHTML = '<div class="cc-page-wrap"><div class="cc-alert cc-alert-danger">' + esc(e.message) + '</div></div>';
         }
     }
     window.CareerConnect.nav = page => navigate(page);
+    if (window.__CC_BOOT_HOOK__) window.__CC_BOOT_HOOK__.nav = navigate;
 
     function initWebSockets() {
         const cfg = window.REVERB_CONFIG, uid = state.profile?.id;
@@ -183,10 +225,37 @@ window.CareerConnect = window.CareerConnect || { state: {} };
         window.addEventListener('careerconnect:board-post', e => toast('New board post: ' + (e.detail?.title || ''), 'info'));
     }
 
+    async function renderStudentDashboard(main) {
+        let openJobs = 0, openIntern = 0, myApps = 0;
+        try {
+            const data = await api('/opportunities/bootstrap');
+            openJobs = (data.jobs || []).filter(j => j.status === 'open').length;
+            openIntern = (data.internships || []).filter(i => i.status === 'open').length;
+            myApps = (data.applications || []).length;
+        } catch (_) {}
+        const name = state.profile?.name || 'Student';
+        main.innerHTML = '<div class="cc-page-wrap">' +
+            '<div class="cc-banner"><div class="cc-banner-left">' +
+            '<div class="cc-banner-avatar">' + esc(name.charAt(0)) + '</div>' +
+            '<div><h2>Welcome, ' + esc(name) + '</h2><p>Explore careers and track your applications.</p></div></div></div>' +
+            '<div class="cc-metrics">' +
+            '<div class="cc-metric"><div class="cc-metric-val" style="color:var(--primary)">' + openJobs + '</div><div class="cc-metric-label">Open jobs</div></div>' +
+            '<div class="cc-metric"><div class="cc-metric-val" style="color:var(--accent)">' + openIntern + '</div><div class="cc-metric-label">Internships</div></div>' +
+            '<div class="cc-metric"><div class="cc-metric-val" style="color:var(--info)">' + myApps + '</div><div class="cc-metric-label">My applications</div></div>' +
+            '</div>' +
+            '<div class="cc-quick-actions">' +
+            '<button type="button" class="cc-btn-outline" style="--btn-color:var(--primary)" onclick="CareerConnect.nav(\'opportunities\')">Browse opportunities</button>' +
+            '<button type="button" class="cc-btn-outline" style="--btn-color:var(--info)" onclick="CareerConnect.nav(\'opp-applications\')">My applications</button>' +
+            '</div></div>';
+    }
+
     /* ══════════════════════════════════════════════════════
        DASHBOARD
     ══════════════════════════════════════════════════════ */
     async function renderDashboard(main) {
+        if (state.profile?.role === 'student') {
+            return renderStudentDashboard(main);
+        }
         const stats = await api('/dashboard/stats');
         const role  = state.profile?.role || 'faculty';
         const name  = state.profile?.name || 'Faculty';

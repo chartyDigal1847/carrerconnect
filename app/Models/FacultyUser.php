@@ -94,7 +94,7 @@ class FacultyUser extends Authenticatable
 
     public function isBlocked(): bool
     {
-        return $this->role === 'student' || ! $this->is_active;
+        return ! $this->is_active;
     }
 
     public function canPublishAnnouncements(): bool

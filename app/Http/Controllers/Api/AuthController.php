@@ -36,6 +36,12 @@ class AuthController
                 'messages_send'         => $this->capabilities->can($user, 'messages.send'),
                 'analytics'             => $this->capabilities->can($user, 'analytics.*'),
                 'moderation'            => $this->capabilities->can($user, 'moderation.*'),
+                'opportunities_read'    => $this->capabilities->can($user, 'opportunities.read'),
+                'opportunities_apply'   => $this->capabilities->can($user, 'opportunities.apply'),
+                'opportunities_manage'  => $this->capabilities->can($user, 'opportunities.manage'),
+                'opportunities_approve' => $this->capabilities->can($user, 'opportunities.approve'),
+                'opportunities_delete'  => $this->capabilities->can($user, 'opportunities.delete'),
+                'opportunities_reports' => $this->capabilities->can($user, 'opportunities.reports'),
             ],
             'capabilities' => config('careerconnect.roles.capabilities.'.$user->role, []),
         ]);

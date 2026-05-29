@@ -13,7 +13,7 @@ return new class extends Migration
             $table->string('sso_id')->unique();
             $table->string('email')->unique();
             $table->string('name');
-            $table->string('role'); // instructor, cashier, librarian, admission_officer, admin
+            $table->string('role'); // instructor, cashier, librarian, admission_officer, career_officer, admin
             $table->string('department')->nullable();
             $table->json('permissions')->nullable();
             $table->string('profile_picture')->nullable();

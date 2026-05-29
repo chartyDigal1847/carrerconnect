@@ -24,7 +24,7 @@ class BlockStudents
         }
 
         try {
-            $this->roles->validateUserAccess($user);
+            $this->roles->validateFacultyAccess($user);
         } catch (\Illuminate\Auth\AuthenticationException $e) {
             $this->accessLogger->logDenied($request, 'access_denied', $user->role, $user->sso_id);
 

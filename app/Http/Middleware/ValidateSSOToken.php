@@ -63,7 +63,7 @@ class ValidateSSOToken
 
             // Centralized role validation
             try {
-                $this->roles->validateUserAccess($result['user']);
+                $this->roles->validateModuleAccess($result['user']);
             } catch (\Illuminate\Auth\AuthenticationException $e) {
                 $this->accessLogger->logDenied($request, 'access_denied', $result['user']->role, $result['user']->sso_id);
 
@@ -96,7 +96,7 @@ class ValidateSSOToken
         }
 
         try {
-            $this->roles->validateUserAccess($user);
+            $this->roles->validateModuleAccess($user);
         } catch (\Illuminate\Auth\AuthenticationException $e) {
             $this->accessLogger->logDenied($request, 'access_denied', $user->role, $user->sso_id);
 

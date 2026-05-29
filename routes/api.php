@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\{
     DashboardController,
     DepartmentController,
     RealtimeController,
+    OpportunityController,
 };
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\SsoController;
@@ -49,84 +50,119 @@ Route::prefix('v1/service')->group(function () {
 */
 Route::middleware([
     ValidateSSOToken::class,
-    BlockStudents::class,
     \App\Http\Middleware\LogUnauthorizedAccess::class,
     'throttle:careerconnect-api',
 ])->prefix('v1')->group(function () {
     Route::get('/auth/me', [\App\Http\Controllers\Api\AuthController::class, 'me']);
-    Route::get('/realtime/poll', [RealtimeController::class, 'poll']);
 
-    // Department coordination
-    Route::get('/departments', [DepartmentController::class, 'index']);
-    Route::get('/departments/{department}', [DepartmentController::class, 'show']);
+    // Recruitment / opportunities (students + staff)
+    Route::prefix('opportunities')->group(function () {
+        Route::get('/bootstrap', [OpportunityController::class, 'bootstrap']);
+        Route::get('/reports', [OpportunityController::class, 'reports'])
+            ->middleware('permission:opportunities.reports');
 
-    // Dashboard
-    Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
-    Route::get('/dashboard/analytics', [DashboardController::class, 'analytics']);
+        Route::post('/jobs', [OpportunityController::class, 'storeJob'])
+            ->middleware('permission:opportunities.manage');
+        Route::put('/jobs/{id}', [OpportunityController::class, 'updateJob'])
+            ->middleware('permission:opportunities.manage');
+        Route::patch('/jobs/{id}/status', [OpportunityController::class, 'updateJobStatus'])
+            ->middleware('permission:opportunities.manage');
+        Route::delete('/jobs/{id}', [OpportunityController::class, 'destroyJob'])
+            ->middleware('permission:opportunities.delete');
 
-    // Announcements
-    Route::get('/announcements', [AnnouncementController::class, 'index']);
-    Route::get('/announcements/{announcement}', [AnnouncementController::class, 'show']);
-    Route::post('/announcements', [AnnouncementController::class, 'store'])
-        ->middleware('role:admin,instructor,admission_officer');
-    Route::put('/announcements/{announcement}', [AnnouncementController::class, 'update']);
-    Route::delete('/announcements/{announcement}', [AnnouncementController::class, 'destroy']);
+        Route::post('/internships', [OpportunityController::class, 'storeInternship'])
+            ->middleware('permission:opportunities.manage');
+        Route::put('/internships/{id}', [OpportunityController::class, 'updateInternship'])
+            ->middleware('permission:opportunities.manage');
+        Route::patch('/internships/{id}/status', [OpportunityController::class, 'updateInternshipStatus'])
+            ->middleware('permission:opportunities.manage');
+        Route::delete('/internships/{id}', [OpportunityController::class, 'destroyInternship'])
+            ->middleware('permission:opportunities.delete');
 
-    // Communication Boards
-    Route::get('/boards', [CommunicationBoardController::class, 'index']);
-    Route::get('/boards/{board}', [CommunicationBoardController::class, 'show']);
-    Route::post('/boards', [CommunicationBoardController::class, 'store'])
-        ->middleware('role:admin,instructor,admission_officer');
-    Route::put('/boards/{board}', [CommunicationBoardController::class, 'update']);
-    Route::delete('/boards/{board}', [CommunicationBoardController::class, 'destroy']);
+        Route::post('/applications', [OpportunityController::class, 'storeApplication'])
+            ->middleware('permission:opportunities.apply');
+        Route::patch('/applications/{id}/status', [OpportunityController::class, 'updateApplicationStatus'])
+            ->middleware('permission:opportunities.approve');
+        Route::delete('/applications/{id}', [OpportunityController::class, 'destroyApplication'])
+            ->middleware('permission:opportunities.delete');
+    });
 
-    // Board Posts
-    Route::get('/boards/{board}/posts', [BoardPostController::class, 'index']);
-    Route::get('/boards/{board}/posts/{post}', [BoardPostController::class, 'show']);
-    Route::post('/boards/{board}/posts', [BoardPostController::class, 'store']);
-    Route::put('/posts/{post}', [BoardPostController::class, 'update']);
-    Route::delete('/posts/{post}', [BoardPostController::class, 'destroy']);
+    // Faculty-only features
+    Route::middleware(BlockStudents::class)->group(function () {
+        Route::get('/realtime/poll', [RealtimeController::class, 'poll']);
 
-    // Board comments
-    Route::get('/boards/{board}/posts/{post}/comments', [BoardCommentController::class, 'index']);
-    Route::post('/boards/{board}/posts/{post}/comments', [BoardCommentController::class, 'store']);
-    Route::put('/comments/{comment}', [BoardCommentController::class, 'update']);
-    Route::delete('/comments/{comment}', [BoardCommentController::class, 'destroy']);
+        // Department coordination
+        Route::get('/departments', [DepartmentController::class, 'index']);
+        Route::get('/departments/{department}', [DepartmentController::class, 'show']);
 
-    // Career Resources
-    Route::get('/resources/categories', [CareerResourceController::class, 'categories']);
-    Route::get('/resources', [CareerResourceController::class, 'index']);
-    Route::post('/resources', [CareerResourceController::class, 'store'])
-        ->middleware('role:admin,instructor,librarian');
-    Route::get('/resources/{resource}', [CareerResourceController::class, 'show']);
-    Route::get('/resources/{resource}/download', [CareerResourceController::class, 'download']);
+        // Dashboard
+        Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
+        Route::get('/dashboard/analytics', [DashboardController::class, 'analytics']);
 
-    // Notifications
-    Route::get('/notifications', [NotificationController::class, 'index']);
-    Route::get('/notifications/unread-count', [NotificationController::class, 'getUnreadCount']);
-    Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
-    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
-    Route::post('/notifications/{notification}/archive', [NotificationController::class, 'archive']);
+        // Announcements
+        Route::get('/announcements', [AnnouncementController::class, 'index']);
+        Route::get('/announcements/{announcement}', [AnnouncementController::class, 'show']);
+        Route::post('/announcements', [AnnouncementController::class, 'store'])
+            ->middleware('role:admin,instructor,admission_officer,career_officer');
+        Route::put('/announcements/{announcement}', [AnnouncementController::class, 'update']);
+        Route::delete('/announcements/{announcement}', [AnnouncementController::class, 'destroy']);
 
-    // Messages
-    Route::get('/messages/directory', [MessageController::class, 'facultyDirectory']);
-    Route::get('/messages/threads', [MessageController::class, 'threads']);
-    Route::post('/messages/threads', [MessageController::class, 'createThread'])
-        ->middleware('role:admin,instructor');
-    Route::get('/messages/threads/{thread}', [MessageController::class, 'getThread']);
-    Route::post('/messages/threads/{thread}/send', [MessageController::class, 'sendMessage'])
-        ->middleware('role:admin,instructor');
-    Route::post('/messages/{message}/read', [MessageController::class, 'markMessageAsRead']);
+        // Communication Boards
+        Route::get('/boards', [CommunicationBoardController::class, 'index']);
+        Route::get('/boards/{board}', [CommunicationBoardController::class, 'show']);
+        Route::post('/boards', [CommunicationBoardController::class, 'store'])
+            ->middleware('role:admin,instructor,admission_officer,career_officer');
+        Route::put('/boards/{board}', [CommunicationBoardController::class, 'update']);
+        Route::delete('/boards/{board}', [CommunicationBoardController::class, 'destroy']);
 
-    // Search
-    Route::get('/search', [SearchController::class, 'search']);
+        // Board Posts
+        Route::get('/boards/{board}/posts', [BoardPostController::class, 'index']);
+        Route::get('/boards/{board}/posts/{post}', [BoardPostController::class, 'show']);
+        Route::post('/boards/{board}/posts', [BoardPostController::class, 'store']);
+        Route::put('/posts/{post}', [BoardPostController::class, 'update']);
+        Route::delete('/posts/{post}', [BoardPostController::class, 'destroy']);
 
-    // Activity
-    Route::get('/activity', [ActivityController::class, 'index']);
-    Route::get('/activity/system', [ActivityController::class, 'getSystemActivity']);
+        // Board comments
+        Route::get('/boards/{board}/posts/{post}/comments', [BoardCommentController::class, 'index']);
+        Route::post('/boards/{board}/posts/{post}/comments', [BoardCommentController::class, 'store']);
+        Route::put('/comments/{comment}', [BoardCommentController::class, 'update']);
+        Route::delete('/comments/{comment}', [BoardCommentController::class, 'destroy']);
 
-    // Analytics (SQL views / procedures)
-    Route::get('/analytics/faculty-activity', [AnalyticsController::class, 'facultyActivity']);
-    Route::get('/analytics/announcement-delivery', [AnalyticsController::class, 'announcementDelivery']);
-    Route::get('/analytics/engagement', [AnalyticsController::class, 'engagement']);
+        // Career Resources
+        Route::get('/resources/categories', [CareerResourceController::class, 'categories']);
+        Route::get('/resources', [CareerResourceController::class, 'index']);
+        Route::post('/resources', [CareerResourceController::class, 'store'])
+            ->middleware('role:admin,instructor,librarian');
+        Route::get('/resources/{resource}', [CareerResourceController::class, 'show']);
+        Route::get('/resources/{resource}/download', [CareerResourceController::class, 'download']);
+
+        // Notifications
+        Route::get('/notifications', [NotificationController::class, 'index']);
+        Route::get('/notifications/unread-count', [NotificationController::class, 'getUnreadCount']);
+        Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
+        Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
+        Route::post('/notifications/{notification}/archive', [NotificationController::class, 'archive']);
+
+        // Messages
+        Route::get('/messages/directory', [MessageController::class, 'facultyDirectory']);
+        Route::get('/messages/threads', [MessageController::class, 'threads']);
+        Route::post('/messages/threads', [MessageController::class, 'createThread'])
+            ->middleware('role:admin,instructor');
+        Route::get('/messages/threads/{thread}', [MessageController::class, 'getThread']);
+        Route::post('/messages/threads/{thread}/send', [MessageController::class, 'sendMessage'])
+            ->middleware('role:admin,instructor');
+        Route::post('/messages/{message}/read', [MessageController::class, 'markMessageAsRead']);
+
+        // Search
+        Route::get('/search', [SearchController::class, 'search']);
+
+        // Activity
+        Route::get('/activity', [ActivityController::class, 'index']);
+        Route::get('/activity/system', [ActivityController::class, 'getSystemActivity']);
+
+        // Analytics (SQL views / procedures)
+        Route::get('/analytics/faculty-activity', [AnalyticsController::class, 'facultyActivity']);
+        Route::get('/analytics/announcement-delivery', [AnalyticsController::class, 'announcementDelivery']);
+        Route::get('/analytics/engagement', [AnalyticsController::class, 'engagement']);
+    });
 });

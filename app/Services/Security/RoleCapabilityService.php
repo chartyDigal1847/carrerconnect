@@ -3,6 +3,7 @@
 namespace App\Services\Security;
 
 use App\Models\FacultyUser;
+use Illuminate\Auth\AuthenticationException;
 
 class RoleCapabilityService
 {
@@ -11,7 +12,7 @@ class RoleCapabilityService
      */
     public function isBlockedRole(string $role): bool
     {
-        return in_array($role, config('careerconnect.roles.blocked', ['student']), true);
+        return in_array($role, config('careerconnect.roles.blocked', []), true);
     }
 
     /**
@@ -23,18 +24,37 @@ class RoleCapabilityService
     }
 
     /**
-     * Validate that a user is not blocked and has an allowed role.
-     * Throws exception if user should be denied access.
+     * Validate module access for any allowed role (including students).
+     */
+    public function validateModuleAccess(FacultyUser $user): void
+    {
+        if (! $user->is_active) {
+            throw new AuthenticationException('Account is inactive');
+        }
+
+        if ($this->isBlockedRole($user->role) || ! $this->isAllowedRole($user->role)) {
+            throw new AuthenticationException('Role not permitted for CareerConnect');
+        }
+    }
+
+    /**
+     * Validate faculty-only API access (excludes students).
+     */
+    public function validateFacultyAccess(FacultyUser $user): void
+    {
+        $this->validateModuleAccess($user);
+
+        if ($user->role === 'student') {
+            throw new AuthenticationException('Students cannot access faculty features');
+        }
+    }
+
+    /**
+     * @deprecated Use validateFacultyAccess for faculty routes or validateModuleAccess for SSO.
      */
     public function validateUserAccess(FacultyUser $user): void
     {
-        if ($user->isBlocked() || $this->isBlockedRole($user->role)) {
-            throw new \Illuminate\Auth\AuthenticationException('Students cannot access CareerConnect');
-        }
-
-        if (! $this->isAllowedRole($user->role)) {
-            throw new \Illuminate\Auth\AuthenticationException('Invalid faculty role');
-        }
+        $this->validateFacultyAccess($user);
     }
 
     /**
@@ -42,9 +62,7 @@ class RoleCapabilityService
      */
     public function can(FacultyUser $user, string $capability): bool
     {
-        try {
-            $this->validateUserAccess($user);
-        } catch (\Illuminate\Auth\AuthenticationException) {
+        if (! $user->is_active || ! $this->isAllowedRole($user->role)) {
             return false;
         }
 
@@ -52,20 +70,32 @@ class RoleCapabilityService
             return true;
         }
 
-        $caps = config('careerconnect.roles.capabilities.'.$user->role, []);
+        if ($this->roleHasCapability($user->role, $capability)) {
+            return true;
+        }
+
+        return $user->hasPermission($capability);
+    }
+
+    /**
+     * @param  list<string>  $capabilities
+     */
+    private function roleHasCapability(string $role, string $capability): bool
+    {
+        $caps = config('careerconnect.roles.capabilities.'.$role, []);
 
         foreach ($caps as $allowed) {
             if ($allowed === $capability) {
                 return true;
             }
-            if (str_ends_with($allowed, '.*')) {
-                $prefix = rtrim($allowed, '.*');
+            if (str_ends_with((string) $allowed, '.*')) {
+                $prefix = rtrim((string) $allowed, '.*');
                 if (str_starts_with($capability, $prefix)) {
                     return true;
                 }
             }
         }
 
-        return $user->hasPermission($capability);
+        return false;
     }
 }

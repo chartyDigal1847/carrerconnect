@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>CareerConnect — Faculty Communication &amp; Career Support</title>
+    <title>CareerConnect — Careers &amp; Faculty Communication</title>
     <link rel="icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
 
     {{-- Font Awesome icons --}}
@@ -97,6 +97,7 @@
 
 {{-- Main app --}}
 <script src="{{ asset('js/careerconnect.js') }}?v={{ file_exists(public_path('js/careerconnect.js')) ? filemtime(public_path('js/careerconnect.js')) : 1 }}"></script>
+<script src="{{ asset('js/careerconnect-opportunities.js') }}?v={{ file_exists(public_path('js/careerconnect-opportunities.js')) ? filemtime(public_path('js/careerconnect-opportunities.js')) : 1 }}"></script>
 
 @if(app()->environment('local') && ! request()->boolean('embedded'))
 <script>

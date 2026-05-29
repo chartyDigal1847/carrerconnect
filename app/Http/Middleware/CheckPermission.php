@@ -13,7 +13,7 @@ class CheckPermission
 
     public function handle(Request $request, Closure $next, string $permission): Response
     {
-        $user = auth()->user();
+        $user = auth('faculty')->user() ?? auth()->user();
 
         if (! $user || ! $this->capabilities->can($user, $permission)) {
             return response()->json(['error' => 'Insufficient permissions'], 403);

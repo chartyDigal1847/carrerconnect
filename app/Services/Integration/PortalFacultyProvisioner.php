@@ -25,8 +25,8 @@ class PortalFacultyProvisioner
 
         $role = $this->mapPortalRole((string) ($claims['role'] ?? ''));
 
-        if ($this->roles->isBlockedRole($role)) {
-            throw new \InvalidArgumentException('student_blocked');
+        if ($this->roles->isBlockedRole($role) || ! $this->roles->isAllowedRole($role)) {
+            throw new \InvalidArgumentException('role_not_permitted');
         }
 
         // Use sso_id as the canonical identity key.
@@ -47,10 +47,12 @@ class PortalFacultyProvisioner
     {
         return match ($role) {
             'admin' => 'admin',
+            'student' => 'student',
             'instructor', 'faculty' => 'instructor',
             'librarian' => 'librarian',
             'cashier' => 'cashier',
-            'admission_officer', 'registrar', 'hr' => 'admission_officer',
+            'admission_officer', 'registrar' => 'admission_officer',
+            'career_officer', 'placement_officer', 'career_services', 'hr' => 'career_officer',
             default => $role,
         };
     }

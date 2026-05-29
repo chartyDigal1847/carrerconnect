@@ -67,6 +67,38 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
+        FacultyUser::firstOrCreate(
+            ['sso_id' => 'student-001'],
+            [
+                'email' => 'student@university.edu',
+                'name' => 'Student User',
+                'role' => 'student',
+                'is_active' => true,
+            ]
+        );
+
+        FacultyUser::firstOrCreate(
+            ['sso_id' => 'admission-001'],
+            [
+                'email' => 'admissions@university.edu',
+                'name' => 'Admission Officer',
+                'role' => 'admission_officer',
+                'department' => 'BIZ',
+                'is_active' => true,
+            ]
+        );
+
+        FacultyUser::firstOrCreate(
+            ['sso_id' => 'career-001'],
+            [
+                'email' => 'career@university.edu',
+                'name' => 'Career Officer',
+                'role' => 'career_officer',
+                'department' => 'Career Services',
+                'is_active' => true,
+            ]
+        );
+
         ResourceCategory::firstOrCreate(
             ['slug' => 'career-guides'],
             [
