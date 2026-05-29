@@ -1,0 +1,100 @@
+# CareerConnect — independent SOA deployment stack
+# Own MySQL + Redis; no shared database with other DEORIS services.
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${APP_PORT:-8080}:80"
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      APP_URL: ${APP_URL:-http://localhost:8080}
+      APP_PORTAL_URL: ${APP_PORTAL_URL:-https://deoris.test}
+      DB_HOST: mysql
+      DB_DATABASE: careerconnect
+      DB_USERNAME: careerconnect
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      REDIS_HOST: redis
+      QUEUE_CONNECTION: redis
+      CACHE_STORE: redis
+      BROADCAST_CONNECTION: reverb
+      REVERB_HOST: reverb
+      REVERB_PORT: 8080
+      REVERB_SCHEME: http
+      EVENT_HUB_URL: ${EVENT_HUB_URL:-http://event-hub.local/api/v1}
+      EVENT_HUB_SECRET: ${EVENT_HUB_SECRET:-changeme}
+      CAREERCONNECT_SERVICE_KEY: ${CAREERCONNECT_SERVICE_KEY:-changeme}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - storage:/var/www/html/storage
+
+  reverb:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: php artisan reverb:start --host=0.0.0.0 --port=8080
+    ports:
+      - "${REVERB_PORT:-8080}:8080"
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      REDIS_HOST: redis
+      BROADCAST_CONNECTION: reverb
+      REVERB_APP_ID: ${REVERB_APP_ID:-careerconnect}
+      REVERB_APP_KEY: ${REVERB_APP_KEY:-careerconnect-key}
+      REVERB_APP_SECRET: ${REVERB_APP_SECRET:-careerconnect-secret}
+      REVERB_HOST: 0.0.0.0
+      REVERB_PORT: 8080
+      REVERB_SCHEME: http
+    depends_on:
+      - redis
+
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: php artisan queue:work redis --sleep=3 --tries=5
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      DB_HOST: mysql
+      DB_DATABASE: careerconnect
+      DB_USERNAME: careerconnect
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      REDIS_HOST: redis
+      QUEUE_CONNECTION: redis
+      EVENT_HUB_URL: ${EVENT_HUB_URL:-http://event-hub.local/api/v1}
+      EVENT_HUB_SECRET: ${EVENT_HUB_SECRET:-changeme}
+      CAREERCONNECT_SERVICE_KEY: ${CAREERCONNECT_SERVICE_KEY:-changeme}
+    depends_on:
+      - app
+      - redis
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: careerconnect
+      MYSQL_USER: careerconnect
+      MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootsecret}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+
+volumes:
+  mysql_data:
+  redis_data:
+  storage:
