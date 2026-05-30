@@ -14,6 +14,7 @@ define('LARAVEL_START', microtime(true));
     $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     $pin   = ['APP_KEY', 'APP_ENV', 'SESSION_DRIVER', 'SESSION_COOKIE',
               'SESSION_DOMAIN', 'SESSION_SECURE_COOKIE', 'SESSION_SAME_SITE',
+              'SESSION_PARTITIONED_COOKIE',
               'BROADCAST_CONNECTION', 'DB_CONNECTION', 'DB_DATABASE'];
     foreach ($lines as $line) {
         if ($line === '' || $line[0] === '#') { continue; }

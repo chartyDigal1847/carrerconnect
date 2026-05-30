@@ -75,14 +75,17 @@ class AppServiceProvider extends ServiceProvider
         if (! is_readable($envFile)) { return; }
         $pin = ['APP_KEY', 'APP_ENV', 'SESSION_DRIVER', 'SESSION_COOKIE',
                 'SESSION_DOMAIN', 'SESSION_SECURE_COOKIE', 'SESSION_SAME_SITE',
+                'SESSION_PARTITIONED_COOKIE',
                 'BROADCAST_CONNECTION', 'DB_CONNECTION', 'DB_DATABASE'];
         $map = [
             'APP_KEY'               => 'app.key',
             'APP_ENV'               => 'app.env',
             'SESSION_DRIVER'        => 'session.driver',
             'SESSION_COOKIE'        => 'session.cookie',
+            'SESSION_DOMAIN'        => 'session.domain',
             'SESSION_SAME_SITE'     => 'session.same_site',
             'SESSION_SECURE_COOKIE' => 'session.secure',
+            'SESSION_PARTITIONED_COOKIE' => 'session.partitioned',
             'BROADCAST_CONNECTION'  => 'broadcasting.default',
             'DB_DATABASE'           => 'database.connections.mysql.database',
         ];
