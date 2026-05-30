@@ -18,6 +18,7 @@ class EmbeddedSessionMiddlewareOrderTest extends TestCase
 
         $this->assertNotFalse($startSessionIndex, 'StartSession should be registered on the API group.');
         $this->assertNotFalse($forceCookieIndex, 'ForceModuleSessionCookies should be registered on the API group.');
+        // PHPUnit assertLessThan($expected, $actual) => $actual < $expected
         $this->assertLessThan($startSessionIndex, $forceCookieIndex, 'Embedded session cookie config must run before Laravel starts the session.');
     }
 }

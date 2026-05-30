@@ -13,14 +13,17 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->trustProxies(at: '*');
+
         $middleware->validateCsrfTokens(except: [
             'api/sso/*',
         ]);
 
-        $middleware->appendToGroup('api', [
-            \Illuminate\Cookie\Middleware\EncryptCookies::class,
-            \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
-            \App\Http\Middleware\ForceModuleSessionCookies::class,
+        // Pin cookie config before the session starts (matches EntryEase / other modules).
+        $middleware->prependToGroup('web', \App\Http\Middleware\ForceModuleSessionCookies::class);
+        $middleware->prependToGroup('api', \App\Http\Middleware\ForceModuleSessionCookies::class);
+
+        $middleware->api(append: [
             \Illuminate\Session\Middleware\StartSession::class,
         ]);
 

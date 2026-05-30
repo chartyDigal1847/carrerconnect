@@ -25,6 +25,7 @@ class DeorisPortalAuthClient implements PortalAuthClient
 
         try {
             $response = $this->portalHttp($timeout)
+                ->withHeaders(['Authorization' => 'Bearer '.$token])
                 ->post($baseUrl.$path, ['token' => $token]);
         } catch (\Throwable $e) {
             throw PortalAuthException::portalUnavailable($e->getMessage());

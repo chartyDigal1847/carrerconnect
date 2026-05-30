@@ -104,10 +104,10 @@ class SsoController
             ], 403);
         }
 
-        $request->session()->regenerate();
+        $request->session()->flush();
         Auth::guard('faculty')->setUser($user);
-        $request->session()->put('careerconnect.faculty_id', $user->id);
         $request->session()->put([
+            'careerconnect.faculty_id' => $user->id,
             'sso_id' => (string) $user->sso_id,
             'sso_name' => (string) $user->name,
             'sso_email' => strtolower((string) $user->email),
