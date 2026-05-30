@@ -29,18 +29,37 @@ class PortalFacultyProvisioner
             throw new \InvalidArgumentException('role_not_permitted');
         }
 
-        // Use sso_id as the canonical identity key.
-        // This ensures that a portal user cannot be duplicated if email changes.
-        return FacultyUser::updateOrCreate(
-            ['sso_id' => $ssoId],
-            [
-                'email' => (string) ($claims['email'] ?? ''),
-                'name' => (string) ($claims['name'] ?? 'Faculty User'),
-                'role' => $role,
-                'department' => $claims['department'] ?? null,
-                'is_active' => true,
-            ]
-        );
+        $email = strtolower(trim((string) ($claims['email'] ?? '')));
+        if ($email === '') {
+            throw new \InvalidArgumentException('Portal claims missing email');
+        }
+
+        $attributes = [
+            'sso_id' => $ssoId,
+            'email' => $email,
+            'name' => (string) ($claims['name'] ?? 'Faculty User'),
+            'role' => $role,
+            'department' => $claims['department'] ?? null,
+            'is_active' => true,
+        ];
+
+        // Prefer portal sso_id; fall back to email when legacy rows used a different id
+        // (e.g. after portal migrate:fresh or manual seeds) to avoid duplicate-email 500s.
+        $user = FacultyUser::query()->where('sso_id', $ssoId)->first()
+            ?? FacultyUser::withTrashed()->where('email', $email)->first();
+
+        if ($user !== null) {
+            if ($user->trashed()) {
+                $user->restore();
+            }
+
+            $user->fill($attributes);
+            $user->save();
+
+            return $user;
+        }
+
+        return FacultyUser::create($attributes);
     }
 
     private function mapPortalRole(string $role): string
