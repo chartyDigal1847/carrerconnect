@@ -24,7 +24,7 @@ window.CareerConnect = window.CareerConnect || { state: {} };
     window.addEventListener('module:error', e =>
         showInitError('Authentication failed: ' + (e.detail?.error || 'unknown')));
 
-    window.addEventListener('module:ready', async e => {
+    async function onModuleReady(e) {
         if (window.__CC_BOOTED__) return;
         window.__CC_BOOTED__ = true;
         try {
@@ -53,7 +53,13 @@ window.CareerConnect = window.CareerConnect || { state: {} };
             if (!user?.id) throw new Error('missing_user');
             await bootApp(user);
         } catch (err) { console.error('[careerconnect]', err); showInitError(err.message || 'Failed to load.'); }
-    });
+    }
+
+    window.addEventListener('module:ready', onModuleReady);
+
+    if (window.__DEORIS_MODULE_READY_DETAIL__) {
+        window.setTimeout(() => onModuleReady({ detail: window.__DEORIS_MODULE_READY_DETAIL__ }), 0);
+    }
 
     /* ── API helper ──────────────────────────────────────── */
     async function api(path, opts = {}, attempt = 0) {
