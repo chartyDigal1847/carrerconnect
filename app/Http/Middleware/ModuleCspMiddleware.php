@@ -29,6 +29,27 @@ class ModuleCspMiddleware
         $reverbPort = (int) config('broadcasting.connections.reverb.options.port', 8080);
         $reverbScheme = config('broadcasting.connections.reverb.options.scheme', 'http') === 'https' ? 'wss' : 'ws';
         $hasValidReverbHost = $reverbHost !== '' && $reverbHost !== 'localhost' && $reverbHost !== '127.0.0.1';
+        $appHost = parse_url($appUrl, PHP_URL_HOST) ?: null;
+
+        $reverbConnectSources = [
+            "http://localhost:{$reverbPort}",
+            "http://127.0.0.1:{$reverbPort}",
+            "ws://localhost:{$reverbPort}",
+            "wss://localhost:{$reverbPort}",
+            "ws://127.0.0.1:{$reverbPort}",
+            "wss://127.0.0.1:{$reverbPort}",
+            "{$reverbScheme}://localhost:{$reverbPort}",
+        ];
+
+        if ($hasValidReverbHost) {
+            $reverbConnectSources[] = "{$reverbScheme}://{$reverbHost}:{$reverbPort}";
+            $reverbConnectSources[] = ($reverbScheme === 'wss' ? 'ws' : 'wss')."://{$reverbHost}:{$reverbPort}";
+        }
+
+        if ($appHost && $appHost !== 'localhost' && $appHost !== '127.0.0.1') {
+            $reverbConnectSources[] = "wss://{$appHost}:{$reverbPort}";
+            $reverbConnectSources[] = "ws://{$appHost}:{$reverbPort}";
+        }
 
         $connectSources = array_filter(array_unique([
             "'self'",
@@ -40,16 +61,7 @@ class ModuleCspMiddleware
             'http://careerconnect.deoris.test',
             'http://localhost',
             'http://127.0.0.1',
-            "http://localhost:{$reverbPort}",
-            "http://127.0.0.1:{$reverbPort}",
-            "ws://localhost:{$reverbPort}",
-            "wss://localhost:{$reverbPort}",
-            "ws://127.0.0.1:{$reverbPort}",
-            "wss://127.0.0.1:{$reverbPort}",
-            $hasValidReverbHost
-                ? "{$reverbScheme}://{$reverbHost}:{$reverbPort}"
-                : null,
-            "{$reverbScheme}://localhost:{$reverbPort}",
+            ...$reverbConnectSources,
             'https://cdn.jsdelivr.net',
         ]));
 
