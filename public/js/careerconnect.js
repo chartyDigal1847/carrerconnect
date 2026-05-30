@@ -34,7 +34,14 @@ window.CareerConnect = window.CareerConnect || { state: {} };
             if (!user?.id && token) {
                 const exchanged = await fetch(window.location.origin + '/api/sso/exchange', {
                     method: 'POST', credentials: 'include',
-                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        ...(window.CAREERCONNECT_SSO_HANDSHAKE_KEY
+                            ? { 'X-CareerConnect-Sso-Key': window.CAREERCONNECT_SSO_HANDSHAKE_KEY }
+                            : {}),
+                    },
                     body: JSON.stringify({ token, embedded: !!detail.embedded }),
                 }).then(async res => {
                     const body = await res.json().catch(() => ({}));
@@ -43,6 +50,7 @@ window.CareerConnect = window.CareerConnect || { state: {} };
                 });
                 user = exchanged || user;
             }
+            if (!user?.id) throw new Error('missing_user');
             await bootApp(user);
         } catch (err) { console.error('[careerconnect]', err); showInitError(err.message || 'Failed to load.'); }
     });
@@ -129,13 +137,26 @@ window.CareerConnect = window.CareerConnect || { state: {} };
     /* ── Boot ────────────────────────────────────────────── */
     async function bootApp(portalUser) {
         state.user = portalUser;
-        state.profile = { id: portalUser.id, sso_id: portalUser.id, name: portalUser.name, email: portalUser.email, role: portalUser.role, permissions: {}, capabilities: [] };
         initToasts();
+
+        try {
+            state.profile = await api('/auth/me');
+        } catch (_) {
+            state.profile = {
+                id: portalUser.id,
+                sso_id: portalUser.id,
+                name: portalUser.name,
+                email: portalUser.email,
+                role: portalUser.role,
+                permissions: {},
+                capabilities: [],
+            };
+        }
+
         const root = document.getElementById('careerconnect-root');
         root.innerHTML = buildShell();
         root.style.cssText = 'display:block;min-height:100vh;';
         wireTabs();
-        try { state.profile = await api('/auth/me'); } catch(_) {}
         if (window.__CC_BOOT_HOOK__) await window.__CC_BOOT_HOOK__.afterProfileLoad();
         renderNavTabs();
         initWebSockets();
